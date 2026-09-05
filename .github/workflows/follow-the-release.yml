@@ -14,15 +14,24 @@
 # the tap watches instead, with its own `GITHUB_TOKEN`, and no secret exists
 # anywhere in the arrangement.
 #
-# The schedule is the safety net rather than the mechanism: run it by hand
-# straight after a release and the tap is current within the minute.
+# The schedule is the safety net rather than the mechanism: the release sends a
+# `repository_dispatch` as it publishes, and this runs anyway in case that
+# never arrived — a poke that silently stops working is the failure this whole
+# workflow exists to prevent, so it is not the only thing keeping the tap
+# current.
 name: Follow the release
 
 on:
+  # The main repository's release pokes this the moment it publishes, so the
+  # tap is current within seconds rather than within the schedule. That poke
+  # needs a cross-repository token, which lives there and can do nothing but
+  # send it; the schedule below is what keeps this correct if it never arrives.
+  repository_dispatch:
+    types: [release-published]
   schedule:
-    # Every six hours. The window is how long `brew install` can serve the
-    # previous version after a release, which is the cost of having no
-    # credential; it was unbounded before.
+    # Every six hours. With the dispatch working this never has anything to
+    # do; it is what bounds the damage when the dispatch fails, and six hours
+    # is chosen for that job rather than as the expected latency.
     - cron: "0 */6 * * *"
   workflow_dispatch:
 
