@@ -9,23 +9,23 @@ class TailscaleMcp < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/tailscale-mcp/tailscale-mcp/releases/download/v1.0.3/tailscale-mcp-1.0.3-aarch64-apple-darwin.tar.gz"
-      sha256 "8b7cd1c5e3fc2186d21a7cf412a1c17e73e0357efacc454d75456c5ba0a5e7ee"
+      url "https://github.com/tailscale-mcp/tailscale-mcp/releases/download/v1.0.4/tailscale-mcp-1.0.4-aarch64-apple-darwin.tar.gz"
+      sha256 "066d4d7c4b87ef3cd2e8840a10526dd7a5ce44517caaaaf53dcadc35f47c78a9"
     end
     on_intel do
-      url "https://github.com/tailscale-mcp/tailscale-mcp/releases/download/v1.0.3/tailscale-mcp-1.0.3-x86_64-apple-darwin.tar.gz"
-      sha256 "91379ebed6354f74a7ab164828a8086c0686ac1a19cda26cdd58a93f367547e6"
+      url "https://github.com/tailscale-mcp/tailscale-mcp/releases/download/v1.0.4/tailscale-mcp-1.0.4-x86_64-apple-darwin.tar.gz"
+      sha256 "c9c99250170f19c2a8aa168bcf241718092d05ec1962bf2ed32ba34b1a4c6948"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/tailscale-mcp/tailscale-mcp/releases/download/v1.0.3/tailscale-mcp-1.0.3-aarch64-unknown-linux-gnu.tar.gz"
-      sha256 "17636a4eadbf30b78e95acbdb8cc069d31ffc926882dc6bd8ad4d74e4d75cb20"
+      url "https://github.com/tailscale-mcp/tailscale-mcp/releases/download/v1.0.4/tailscale-mcp-1.0.4-aarch64-unknown-linux-gnu.tar.gz"
+      sha256 "b553100343a685116f899eebd33c46d2bb6e62eb5ad72cffab7d490b659bd7aa"
     end
     on_intel do
-      url "https://github.com/tailscale-mcp/tailscale-mcp/releases/download/v1.0.3/tailscale-mcp-1.0.3-x86_64-unknown-linux-gnu.tar.gz"
-      sha256 "6063a66647350c57fc0bfe92c34680636887bb2905a988068c594b4e353f344d"
+      url "https://github.com/tailscale-mcp/tailscale-mcp/releases/download/v1.0.4/tailscale-mcp-1.0.4-x86_64-unknown-linux-gnu.tar.gz"
+      sha256 "5334cface2b08597c51c67181524c538267f7fb16731bd95865d973dcce8485f"
     end
   end
 
