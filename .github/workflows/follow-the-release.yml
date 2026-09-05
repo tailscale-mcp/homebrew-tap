@@ -1,0 +1,114 @@
+# Follow the main repository's releases.
+#
+# The formula here is rendered by `release.yml` over in
+# `tailscale-mcp/tailscale-mcp` and attached to the release; something then has
+# to bring it into this repository. That something used to be a person
+# remembering, and the failure mode when they forgot was silent: `brew install`
+# kept working and kept installing the previous version, so nobody found out.
+#
+# It pulls rather than being pushed to, and that direction is forced. A test in
+# the main repository asserts that `release.yml` reads no repository secret but
+# `GITHUB_TOKEN`, which is scoped to that repository alone and cannot write
+# here. Giving the release a token for this repository would mean storing a
+# credential there and failing that test — undoing what ticket 31 was for. So
+# the tap watches instead, with its own `GITHUB_TOKEN`, and no secret exists
+# anywhere in the arrangement.
+#
+# The schedule is the safety net rather than the mechanism: run it by hand
+# straight after a release and the tap is current within the minute.
+name: Follow the release
+
+on:
+  schedule:
+    # Every six hours. The window is how long `brew install` can serve the
+    # previous version after a release, which is the cost of having no
+    # credential; it was unbounded before.
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: follow-the-release
+  cancel-in-progress: false
+
+env:
+  UPSTREAM: tailscale-mcp/tailscale-mcp
+
+jobs:
+  follow:
+    name: Update the formula if the release moved
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      # `/releases/latest` is the newest release that is neither a draft nor a
+      # pre-release, which is the one Homebrew should track: a pre-release goes
+      # out under a different npm dist-tag and no `:latest` image, and it has
+      # no business becoming what `brew install` hands people.
+      - name: Find the released version
+        id: upstream
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag=$(gh api "repos/$UPSTREAM/releases/latest" --jq .tag_name)
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+          echo "the newest release is $tag"
+
+      # The formula carries no `version` field on purpose — `brew audit`
+      # refuses one that states the version twice — so the version it installs
+      # is read back out of the archive names in its own URLs.
+      - name: Find the version this tap serves
+        id: current
+        run: |
+          have=$(grep -oE 'download/v[0-9]+\.[0-9]+\.[0-9]+/' Formula/tailscale-mcp.rb \
+                 | head -1 | sed -E 's|download/v(.*)/|\1|')
+          echo "version=$have" >> "$GITHUB_OUTPUT"
+          echo "this tap serves ${have:-nothing}"
+
+      - name: Fetch the formula and check it against the release's own sums
+        if: steps.current.outputs.version != steps.upstream.outputs.version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.upstream.outputs.tag }}
+        run: |
+          gh release download "$TAG" --repo "$UPSTREAM" \
+            --pattern tailscale-mcp.rb --pattern SHA256SUMS --dir fetched
+          # `release.yml` appends the formula's own sum to SHA256SUMS after
+          # rendering it, so the file it is checked against is the one the
+          # release published rather than anything computed here.
+          (cd fetched && grep ' tailscale-mcp.rb$' SHA256SUMS | sha256sum --check --strict -)
+          # And the formula must actually be the version it claims to be,
+          # rather than whatever asset happened to carry the name.
+          grep -q "download/$TAG/" fetched/tailscale-mcp.rb
+          mv fetched/tailscale-mcp.rb Formula/tailscale-mcp.rb
+          rm -rf fetched
+
+      - name: Commit it
+        if: steps.current.outputs.version != steps.upstream.outputs.version
+        env:
+          TAG: ${{ steps.upstream.outputs.tag }}
+        run: |
+          if git diff --quiet -- Formula/tailscale-mcp.rb; then
+            echo "the release moved but the formula did not; nothing to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/tailscale-mcp.rb
+          git commit -m "Update the formula to $TAG
+
+          Taken from the release asset and checked against that release's
+          SHA256SUMS. Written by .github/workflows/follow-the-release.yml."
+          git push
+
+      - name: Say what happened
+        run: |
+          if [ "${{ steps.current.outputs.version }}" = "${{ steps.upstream.outputs.version }}" ]; then
+            echo "already at ${{ steps.upstream.outputs.version }}; nothing to do"
+          else
+            echo "moved ${{ steps.current.outputs.version }} -> ${{ steps.upstream.outputs.version }}"
+          fi
